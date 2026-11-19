@@ -59,6 +59,21 @@
     const b = new Uint8Array(await (await fetch(url)).arrayBuffer());
     return crypto.subtle.decrypt({ name:'AES-GCM', iv:b.slice(0, 12) }, key, b.slice(12));
   }
+  const CDN = 'https://cdn.jsdelivr.net/gh/Shanicrantz/xanvor-copper-bottle-3d@df0bb5f02c7b5007c16af5df01683d9dab96c9d0/data/m.bin';
+  async function decModel(key, st) {
+    for (const url of [CDN, 'data/m.bin']) {
+      if (!url) continue;
+      try {
+        const r = await fetch(url); if (!r.ok) throw 0;
+        const n = +r.headers.get('content-length') || 0, rd = r.body.getReader(), parts = []; let got = 0;
+        for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); got += value.length;
+          st.textContent = 'Loading model… ' + (n ? Math.min(100, Math.round(got / n * 100)) + '%' : (got / 1048576).toFixed(1) + ' MB'); }
+        const b = new Uint8Array(got); let o = 0; for (const p of parts) { b.set(p, o); o += p.length; }
+        return await crypto.subtle.decrypt({ name:'AES-GCM', iv:b.slice(0, 12) }, key, b.slice(12));
+      } catch (e) {}
+    }
+    throw new Error('model');
+  }
   document.getElementById('f').addEventListener('submit', async e => {
     e.preventDefault();
     const go = document.getElementById('go'); go.disabled = true; msg.textContent = 'Checking…';
@@ -73,7 +88,7 @@
       document.body.innerHTML = c.body;
       new Function(c.js)();
       const st = document.getElementById('status'); st.textContent = 'Loading model…';
-      const m = await dec(key, 'data/m.bin');
+      const m = await decModel(key, st);
       document.getElementById('mv').src = URL.createObjectURL(new Blob([m], { type:'model/gltf-binary' }));
     } catch (err) { msg.textContent = 'Could not open the page. Check the connection and try again.'; go.disabled = false; }
   });
